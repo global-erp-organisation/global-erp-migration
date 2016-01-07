@@ -11,7 +11,9 @@ import com.camlait.global.erp.domain.entrepot.Entrepot;
 import com.camlait.global.erp.domain.entrepot.MagasinFixe;
 import com.camlait.global.erp.domain.entrepot.MagasinMobile;
 import com.camlait.global.erp.domain.enumeration.Portee;
+import com.camlait.global.erp.domain.enumeration.Sexe;
 import com.camlait.global.erp.domain.exception.GlobalErpServiceException;
+import com.camlait.global.erp.domain.immobilisation.PartenaireImmobilisation;
 import com.camlait.global.erp.domain.immobilisation.Refrigerateur;
 import com.camlait.global.erp.domain.immobilisation.Vehicule;
 import com.camlait.global.erp.domain.organisation.Centre;
@@ -24,6 +26,7 @@ import com.camlait.global.erp.domain.partenaire.Client;
 import com.camlait.global.erp.domain.partenaire.ClientAmarge;
 import com.camlait.global.erp.domain.partenaire.Emplois;
 import com.camlait.global.erp.domain.partenaire.Employe;
+import com.camlait.global.erp.domain.partenaire.Magasinier;
 import com.camlait.global.erp.domain.partenaire.Vendeur;
 import com.camlait.global.erp.domain.produit.CategorieProduit;
 import com.camlait.global.erp.domain.produit.Produit;
@@ -108,7 +111,7 @@ public class MigrateData {
 		organisation(localisationService, m);
 
 		// Vendeur
-		sql = "select CodePersonnel matricule, NomPersonnel nom, PrenomPersonnel prenom, DateDenaissancePersonnel nais, TauxCommission tcom, Commission com, CodeZone zone, Key_Timmo veh, AdressePersonnel addr  from temploye where Key_Templois='VD'";
+		sql = "select CodePersonnel matricule, NomPersonnel nom, PrenomPersonnel prenom, DateDenaissancePersonnel nais, TauxCommission tcom, Commission com, CodeZone zone, Key_Timmo veh, AdressePersonnel addr, sexePersonnel sexe  from temploye where Key_Templois in ('VD','AD')";
 		r = m.execute(sql);
 		while (r.next()) {
 			Vendeur v = new Vendeur();
@@ -121,6 +124,7 @@ public class MigrateData {
 			v.setPrenom(r.getString("prenom"));
 			v.setRecoisDesCommission(r.getBoolean("com"));
 			v.setTauxDeCommission(r.getDouble("tcom"));
+			v.setSexe((r.getInt("sexe")==1)?Sexe.HOMME:Sexe.FEMME);
 			Zone z = accept(localisationService, r.getString("zone"));
 			if (z != null)
 				v.setZoneDeVente(z);
@@ -128,7 +132,7 @@ public class MigrateData {
 		}
 		// Caissiers
 
-		sql = "select CodePersonnel matricule, NomPersonnel nom, PrenomPersonnel prenom, DateDenaissancePersonnel nais, Key_Timmo veh, AdressePersonnel addr,Key_Templois emplois  from temploye where Key_Templois='CA'";
+		sql = "select CodePersonnel matricule, NomPersonnel nom, PrenomPersonnel prenom, DateDenaissancePersonnel nais, Key_Timmo veh, AdressePersonnel addr,Key_Templois emplois, sexePersonnel sexe  from temploye where Key_Templois='CA'";
 		r = m.execute(sql);
 		while (r.next()) {
 			Caissier v = new Caissier();
@@ -139,12 +143,32 @@ public class MigrateData {
 			v.setMatricule(r.getString("matricule"));
 			v.setNom(r.getString("nom"));
 			v.setPrenom(r.getString("prenom"));
+			v.setSexe((r.getInt("sexe")==1)?Sexe.HOMME:Sexe.FEMME);
 			partenaireService.ajouterPartenaire(v);
 		}
+		
+		
+		//Magasinier
+		
+		  sql = "select CodePersonnel matricule, NomPersonnel nom, PrenomPersonnel prenom, DateDenaissancePersonnel nais, Key_Timmo veh, AdressePersonnel addr,Key_Templois emplois, sexePersonnel sexe  from temploye where Key_Templois in ('MG','AMG')";
+	        r = m.execute(sql);
+	        while (r.next()) {
+	            Magasinier v = new Magasinier();
+	            v.setCodePartenaire(r.getString("matricule"));
+	            v.setAdresse(r.getString("addr"));
+	            v.setDateDeNaissance(r.getDate("nais"));
+	            v.setEmplois(partenaireService.obtenirEmplois(r.getString("emplois")));
+	            v.setMatricule(r.getString("matricule"));
+	            v.setNom(r.getString("nom"));
+	            v.setPrenom(r.getString("prenom"));
+	            v.setSexe((r.getInt("sexe")==1)?Sexe.HOMME:Sexe.FEMME);
+	            partenaireService.ajouterPartenaire(v);
+	        }
+
 
 		// Autres employes
 
-		sql = "select CodePersonnel matricule, NomPersonnel nom, PrenomPersonnel prenom, DateDenaissancePersonnel nais, Key_Timmo veh, AdressePersonnel addr,Key_Templois emplois  from temploye where Key_Templois not in ('VD','CA')";
+		sql = "select CodePersonnel matricule, NomPersonnel nom, PrenomPersonnel prenom, DateDenaissancePersonnel nais, Key_Timmo veh, AdressePersonnel addr,Key_Templois emplois,sexePersonnel sexe  from temploye where Key_Templois not in ('VD','CA','AMG','AD')";
 		r = m.execute(sql);
 		while (r.next()) {
 			Employe v = new Employe();
@@ -155,6 +179,7 @@ public class MigrateData {
 			v.setMatricule(r.getString("matricule"));
 			v.setNom(r.getString("nom"));
 			v.setPrenom(r.getString("prenom"));
+			v.setSexe((r.getInt("sexe")==1)?Sexe.HOMME:Sexe.FEMME);
 			partenaireService.ajouterPartenaire(v);
 		}
 
@@ -200,7 +225,7 @@ public class MigrateData {
 		}
 		
 		// Vitrines
-		sql = "select CodeImmobilisation code, IntituleImmobilisation description from timmobilisation where CodeImmobilisation like '%VIT%'";
+		sql = "select CodeImmobilisation code, IntituleImmobilisation description from timmobilisation where CodeImmobilisation not like '%VEH%'";
 		r = m.execute(sql);
 		while (r.next()) {
 			Refrigerateur v = new Refrigerateur();
@@ -208,6 +233,18 @@ public class MigrateData {
 			v.setDescriptionImmo(r.getString("description"));
 			partenaireService.ajouterImmobilisation(v);
 		}
+		
+		//Partenaire immo.
+		sql="select p.key_tpartenaire partenaire, Key_Timmo immo, DateObtention date from tpartenairettypepartenaireimmobilisation i join tpartenairettypepartenaire p on i.Key_TpartenaireTypePartenaire=p.Key_TpartenaireTypePartenaire";
+		r = m.execute(sql);
+        while (r.next()) {
+            PartenaireImmobilisation p = new PartenaireImmobilisation();
+            p.setActif(true);
+            p.setDateAllocation(r.getDate("date"));
+            p.setImmobilisation(partenaireService.obtenirImmobilisation(Refrigerateur.class, r.getString("immo")));
+            p.setPartenaire(partenaireService.obtenirPartenaire(Client.class, r.getString("partenaire")));
+            partenaireService.ajouterPartenaireImmobilisation(p);          
+        }
 	}
 
 	private static void organisation(ILocalisationService localService, AbstractConnection m) throws SQLException {
