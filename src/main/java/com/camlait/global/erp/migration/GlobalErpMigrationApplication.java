@@ -15,6 +15,7 @@ import com.camlait.global.erp.domain.config.GlobalAppConstants;
 import com.camlait.global.erp.domain.exception.GlobalErpServiceException;
 import com.camlait.global.erp.migration.dao.MysqlConnection;
 import com.camlait.global.erp.migration.service.MigrateData;
+import com.camlait.global.erp.service.inventaire.IInventaireService;
 import com.camlait.global.erp.service.organisation.ILocalisationService;
 import com.camlait.global.erp.service.partenaire.IPartenaireService;
 import com.camlait.global.erp.service.produit.IProduitService;
@@ -34,6 +35,9 @@ public class GlobalErpMigrationApplication {
     @Autowired
     private IPartenaireService partenaireService;
     
+    @Autowired
+    private IInventaireService inventaire;
+    
     public static void main(String[] args) {
         SpringApplication.run(GlobalErpMigrationApplication.class, args);
     }
@@ -41,8 +45,9 @@ public class GlobalErpMigrationApplication {
     @PostConstruct
     public void start() throws GlobalErpServiceException, IllegalArgumentException, SQLException {
         MysqlConnection m =new MysqlConnection();
-        //MigrateData.produit(produitService, m);
+        MigrateData.produit(produitService, m);
         MigrateData.partenaire(partenaireService, localService, m);
+        MigrateData.entrepot(inventaire, localService, m);
     }
     
 }
